@@ -1,5 +1,111 @@
 ---
 title: "end_day"
 format: html
+editor_options: 
+  chunk_output_type: console
 ---
+### init
+```{r}
+rm(list = rm())
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(ggbeeswarm)
+library(patchwork)
+library(purrr)
+```
+
+```{r}
+meteor <- read_csv(here("data", "madison.csv"))
+ice_dur <- read_csv(here("data", "north.csv"))
+```
+
+### process data for ice by lake graph
+```{r}
+ice_dur[ice_dur == -999] <- NA
+
+ice_dur_mean <- ice_dur %>% group_by(lakeid) %>% summarize(ice_dur_mean = mean(ice_duration, na.rm = TRUE))
+```
+
+
+```{r}
+ggplot(ice_dur, aes(x = lakeid, y = ice_duration)) + geom_beeswarm() + geom_point(data = ice_dur_mean, aes(x = lakeid, y = ice_dur_mean), color = "red", size = 5, shape = 23, fill = "red")
+```
+
+
+### for ice by year
+```{r}
+ice_by_year <- ice_dur %>% group_by(year4) %>% summarize(ice_mean = mean(ice_duration, na.rm = TRUE)) %>% filter(is.nan(ice_mean) == FALSE)
+
+```
+
+```{r}
+ggplot(ice_by_year, aes(x = year4, y = ice_mean)) + geom_line() +  geom_smooth(method='lm') + labs(caption = "as time progresses, ice remains frozen for fewer days in Madison, WI on average")
+```
+
+### changing to date type just cuz
+
+```{r}
+ice_dur$ice_on <- ymd(ice_dur$ice_on)
+ice_dur$ice_off <- ymd(ice_dur$ice_off)
+```
+
+### mean air temp by year in winter months in madison
+
+```{r}
+air_temp_year_winter <- meteor %>% filter(month %in% c(12, 1, 2)) %>% group_by(year4) %>% summarize(mean_air_temp = mean(ave_air_temp_adjusted))
+
+
+
+```
+
+```{r}
+ggplot(air_temp_year_winter, aes(x = year4, y = mean_air_temp)) + geom_line() + geom_smooth(method = "lm") + labs(caption = "temperature during winter has increased")
+```
+
+### joining  one to the other
+```{r}
+the_join <- left_join(ice_by_year, air_temp_year_winter)
+```
+
+```{r}
+ggplot(the_join, aes(x = ice_mean, mean_air_temp)) + geom_point() + geom_smooth(method = "lm") + labs(caption = "a sentence or two explaining overall trends")
+
+```
+
+### making subset of ice since 1970
+
+```{r}
+ice_sub <- ice_dur %>% filter(year4 > 1970) %>% rename(Date = ice_off) %>% mutate(day_of_yr = lubridate::yday(Date))
+```
+
+```{r}
+ggplot(ice_sub, aes(x = day_of_yr, y = ice_duration)) + geom_point() + geom_smooth(method = lm) + labs(caption = "shut up")
+```
+
+
+### was experimenting here
+```{r}
+a <- c(1,2,3)
+append(a,4)
+a
+```
+
+
+```{r}
+for_calc_slope <- pivot_wider(air_temp_year_winter, names_from = year4, values_from = mean_air_temp)
+
+  v <- vector(mode = "numeric", length = 0)
+
+for (i in 2:length(for_calc_slope)) {
+  cur_val <- (for_calc_slope[i] - for_calc_slope[i - 1])
+  v <- c(v, cur_val)
+  
+}
+  
+mean_air_slope <- unlist(v, use.names = FALSE)
+mean_air_slope <- sum(mean_air_slope)
+```
 
